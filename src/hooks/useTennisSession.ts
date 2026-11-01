@@ -68,12 +68,96 @@ export function useTennisSession() {
     localStorage.setItem(MATCHES_STORAGE_KEY, JSON.stringify(matches));
   }, [matches]);
 
-  // Supabase Realtime Listener (if configured)
+  // 1. Initial Load from Supabase on App Startup
+  useEffect(() => {
+    const client = supabase;
+    if (!isSupabaseConfigured || !client) return;
+
+    const loadLatestFromCloud = async () => {
+      setIsLoading(true);
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetSessionId = urlParams.get('session');
+
+        let sessionQuery = client
+          .from('sessions')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (targetSessionId) {
+          sessionQuery = sessionQuery.eq('id', targetSessionId);
+        }
+
+        const { data: sessions, error: sErr } = await sessionQuery.limit(1);
+
+        if (sErr || !sessions || sessions.length === 0) {
+          setIsLoading(false);
+          return;
+        }
+
+        const latest = sessions[0];
+
+        // Fetch matches for this session
+        const { data: remoteMatches, error: mErr } = await client
+          .from('matches')
+          .select('*')
+          .eq('session_id', latest.id)
+          .order('round', { ascending: true })
+          .order('court', { ascending: true });
+
+        const mappedMatches: Match[] = (remoteMatches || []).map((d: any) => ({
+          id: d.id,
+          sessionId: d.session_id,
+          round: d.round,
+          court: d.court,
+          teamA1: d.team_a1,
+          teamA2: d.team_a2 || '',
+          teamB1: d.team_b1,
+          teamB2: d.team_b2 || '',
+          scoreA: d.score_a,
+          scoreB: d.score_b,
+          isCompleted: d.status === 'completed',
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
+        }));
+
+        // Extract player names
+        const playerSet = new Set<string>();
+        mappedMatches.forEach((m) => {
+          [m.teamA1, m.teamA2, m.teamB1, m.teamB2].filter(Boolean).forEach((p) => playerSet.add(p));
+        });
+
+        const restoredPlayers = Array.from(playerSet);
+
+        setSession({
+          id: latest.id,
+          eventTitle: latest.event_title,
+          hostName: latest.host_name,
+          gameType: latest.game_type,
+          courtCount: latest.court_count,
+          currentRound: latest.current_round,
+          status: latest.status,
+          players: restoredPlayers,
+          createdAt: latest.created_at,
+        });
+
+        setMatches(mappedMatches);
+      } catch (err) {
+        console.warn('Failed to load latest session from cloud:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLatestFromCloud();
+  }, []);
+
+  // 2. Supabase Realtime Listener (for live websocket updates)
   useEffect(() => {
     const client = supabase;
     if (!isSupabaseConfigured || !client || !session.id) return;
 
-    // Listen for remote updates
+    // Listen for remote matches updates
     const channel = client
       .channel(`session-${session.id}`)
       .on(
@@ -81,6 +165,19 @@ export function useTennisSession() {
         { event: '*', schema: 'public', table: 'matches', filter: `session_id=eq.${session.id}` },
         () => {
           fetchRemoteMatches(session.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'sessions', filter: `id=eq.${session.id}` },
+        (payload: any) => {
+          if (payload.new) {
+            setSession((prev) => ({
+              ...prev,
+              currentRound: payload.new.current_round ?? prev.currentRound,
+              status: payload.new.status ?? prev.status,
+            }));
+          }
         }
       )
       .subscribe();
@@ -116,6 +213,19 @@ export function useTennisSession() {
         createdAt: d.created_at,
         updatedAt: d.updated_at,
       }));
+
+      const playerSet = new Set<string>();
+      mapped.forEach((m) => {
+        [m.teamA1, m.teamA2, m.teamB1, m.teamB2].filter(Boolean).forEach((p) => playerSet.add(p));
+      });
+
+      if (playerSet.size > 0) {
+        setSession((prev) => ({
+          ...prev,
+          players: Array.from(new Set([...prev.players, ...Array.from(playerSet)])),
+        }));
+      }
+
       setMatches(mapped);
     }
   };

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Session } from '../types/tennis';
-import { BallMark, Avatar, LiveDot } from './ui';
 import { UserCheck, Users, Eye, CheckCircle2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -54,9 +53,9 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
         setPlayerName('');
         confetti({
           particleCount: 60,
-          spread: 60,
+          spread: 70,
           origin: { y: 0.6 },
-          colors: ['#D8F53B', '#FF7A45', '#F1F5EC'],
+          colors: ['#FF6B00', '#10B981', '#F59E0B'],
         });
       }
     } catch (err: any) {
@@ -66,37 +65,45 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
     }
   };
 
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
   const isSessionStarted = session.status !== 'draft';
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      {/* Top Banner */}
-      <div className="card space-y-4 p-6 text-center">
-        <BallMark className="mx-auto h-14 w-14 drop-shadow-[0_8px_20px_rgba(216,245,59,0.35)]" />
+    <div className="space-y-6 max-w-lg mx-auto">
+      {/* Top Banner Card */}
+      <div className="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-card text-center space-y-4">
+        <div className="w-16 h-16 rounded-3xl bg-orange-50 border-2 border-orange-200 flex items-center justify-center text-3xl mx-auto shadow-sm">
+          🎾
+        </div>
         <div>
-          <div className="mb-1 flex items-center justify-center gap-2">
-            <LiveDot />
-            <span className="eyebrow !text-ball">Pendaftaran Mabar Mandiri</span>
-          </div>
-          <h2 className="font-display text-2xl font-black text-chalk">{session.eventTitle}</h2>
-          <p className="mt-1 text-xs font-semibold text-chalk/50">
-            Host: <span className="text-chalk/80">{session.hostName || 'Admin'}</span> &middot;{' '}
-            {session.gameType === 'Double' ? 'Ganda' : 'Tunggal'} &middot; {session.courtCount} Court
+          <span className="text-[10px] font-black uppercase tracking-widest text-brand-orange bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">
+            PENDAFTARAN MABAR MANDIRI
+          </span>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">{session.eventTitle}</h2>
+          <p className="text-xs text-slate-500 font-bold mt-1">
+            Host: <span className="text-slate-900">{session.hostName || 'Admin'}</span> &bull;{' '}
+            {session.gameType === 'Double' ? 'Ganda' : 'Tunggal'} &bull; {session.courtCount} Court
           </p>
         </div>
 
         {/* Quota Progress */}
-        <div className="space-y-1.5 text-left">
-          <div className="flex justify-between text-xs font-bold text-chalk/60">
+        <div className="space-y-1.5 text-left pt-2">
+          <div className="flex justify-between text-xs font-bold text-slate-600">
             <span>Kuota Peserta</span>
-            <span className="num font-extrabold text-chalk">
+            <span className="font-mono font-black text-slate-900">
               {session.players.length} / {maxLimit} Pemain
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                isFull ? 'bg-clay' : 'bg-ball'
+              className={`h-full transition-all duration-300 ${
+                isFull ? 'bg-red-500' : 'bg-brand-orange'
               }`}
               style={{ width: `${progressPercent}%` }}
             />
@@ -106,58 +113,56 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
 
       {/* Registration Form / Status */}
       {isSessionStarted ? (
-        <div className="card space-y-3 border-ball/30 bg-ball-soft p-5 text-center">
-          <CheckCircle2 className="mx-auto h-8 w-8 text-ball" />
-          <h3 className="font-display text-lg font-bold text-chalk">Sesi Mabar Telah Dimulai!</h3>
-          <p className="text-xs text-chalk/60">
-            Pendaftaran sudah ditutup karena host telah mengunci rotasi lapangan. Silakan pantau giliran main kamu di
-            live scoreboard.
+        <div className="bg-emerald-50 border-2 border-emerald-300 rounded-3xl p-6 text-center space-y-3 shadow-sm">
+          <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+          <h3 className="text-lg font-black text-slate-900">Sesi Mabar Telah Dimulai!</h3>
+          <p className="text-xs text-slate-600 leading-relaxed font-medium">
+            Pendaftaran mandiri telah ditutup karena host sudah mengunci sesi rotasi lapangan. Silakan pantau giliran main kamu di live scoreboard.
           </p>
-          <button onClick={onSwitchToSpectator} className="btn-primary w-full !py-3.5 !text-xs">
-            <Eye className="h-4 w-4" />
-            <span>Buka Live Score &amp; Giliran Main</span>
+          <button onClick={onSwitchToSpectator} className="btn-primary w-full py-3.5 text-xs">
+            <Eye className="w-4 h-4" />
+            <span>Lihat Lapangan &amp; Giliran Main</span>
           </button>
         </div>
       ) : hasRegistered ? (
-        <div className="card animate-fade-up space-y-4 border-ball/40 bg-ink-800 p-6 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-ball text-ink-950 font-black">
-            <CheckCircle2 className="h-7 w-7" />
+        <div className="bg-white rounded-3xl p-6 border-2 border-emerald-300 shadow-card text-center space-y-4 animate-in fade-in">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" />
           </div>
           <div>
-            <h3 className="font-display text-xl font-black text-chalk">Pendaftaran Berhasil!</h3>
-            <p className="mt-1 text-sm text-chalk/70">
-              Kamu terdaftar sebagai <span className="font-bold text-ball">{registeredAs}</span>.
+            <h3 className="text-xl font-black text-slate-900">Pendaftaran Berhasil!</h3>
+            <p className="text-sm text-slate-600 mt-1">
+              Kamu terdaftar sebagai <strong className="text-brand-orange">{registeredAs}</strong>.
             </p>
-            <p className="mt-1 text-xs text-chalk/45">
-              Tunggu Host memulai sesi mabar. Nama kamu sudah masuk ke antrian rotasi pertandingan!
+            <p className="text-xs text-slate-400 mt-1">
+              Nama kamu telah masuk ke antrian rotasi pertandingan host. Bersiap di lapangan!
             </p>
           </div>
 
           <div className="flex gap-2 pt-2">
             <button
               onClick={() => setHasRegistered(false)}
-              className="btn-ghost flex-1 !py-3 text-xs"
+              className="btn-secondary flex-1 py-3 text-xs font-bold"
             >
               Daftarkan Teman Lain
             </button>
             <button
               onClick={onSwitchToSpectator}
-              className="btn-primary flex-1 !py-3 text-xs"
+              className="btn-primary flex-1 py-3 text-xs"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="w-4 h-4" />
               <span>Lihat Lapangan</span>
             </button>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="card space-y-4 p-5">
+        <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-card space-y-4">
           <div className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5 text-ball" />
-            <h3 className="font-display text-lg font-bold text-chalk">Check-In / Masukkan Nama</h3>
+            <UserCheck className="w-5 h-5 text-brand-orange" />
+            <h3 className="text-base font-black text-slate-900">Check-In / Masukkan Nama Kamu</h3>
           </div>
 
           <div>
-            <label className="eyebrow mb-1.5 block !text-[10px]">Nama Kamu</label>
             <input
               type="text"
               value={playerName}
@@ -167,14 +172,14 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
               }}
               placeholder="Contoh: Budi Santoso"
               disabled={isFull || isSubmitting}
-              className="field !py-3.5 !text-base"
+              className="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:border-brand-orange focus:bg-white transition"
               autoFocus
             />
           </div>
 
           {errorMsg && (
-            <p className="flex items-center gap-1.5 text-xs font-bold text-clay">
-              <AlertCircle className="h-4 w-4 shrink-0" />
+            <p className="text-xs font-bold text-red-600 flex items-center gap-1">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </p>
           )}
@@ -182,40 +187,40 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
           <button
             type="submit"
             disabled={isFull || isSubmitting || !playerName.trim()}
-            className="btn-primary w-full !py-4 text-sm font-extrabold"
+            className="w-full btn-primary py-4 text-sm font-black shadow-brand"
           >
-            {isSubmitting ? (
-              <span>Mendaftarkan...</span>
-            ) : (
-              <span>Daftar Sesi Mabar</span>
-            )}
+            {isSubmitting ? <span>Mendaftarkan...</span> : <span>DAFTAR SESI MABAR</span>}
           </button>
         </form>
       )}
 
       {/* Live Registered Players List */}
-      <div className="card space-y-3 p-5">
+      <div className="bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-chalk/60" />
-            <h4 className="font-display text-sm font-bold text-chalk">
+            <Users className="w-4 h-4 text-slate-500" />
+            <h4 className="font-black text-sm text-slate-900">
               Pemain Terdaftar ({session.players.length})
             </h4>
           </div>
-          <span className="text-[10px] font-bold text-ball uppercase">Update Otomatis</span>
+          <span className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+            Update Realtime
+          </span>
         </div>
 
         {session.players.length === 0 ? (
-          <p className="py-4 text-center text-xs text-chalk/40">Belum ada pemain yang check-in.</p>
+          <p className="py-4 text-center text-xs text-slate-400 italic">Belum ada pemain yang check-in.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {session.players.map((p, idx) => (
               <div
                 key={p + idx}
-                className="flex items-center gap-2 rounded-xl bg-white/[0.04] p-2 transition hover:bg-white/[0.08]"
+                className="flex items-center gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200"
               >
-                <Avatar name={p} tone="neutral" size="sm" />
-                <span className="truncate text-xs font-bold text-chalk/90">{p}</span>
+                <div className="w-7 h-7 rounded-lg bg-slate-200 font-black text-[10px] text-slate-700 flex items-center justify-center shrink-0">
+                  {getInitials(p)}
+                </div>
+                <span className="font-extrabold text-xs text-slate-900 truncate">{p}</span>
               </div>
             ))}
           </div>
@@ -223,12 +228,12 @@ export const SelfCheckInView: React.FC<SelfCheckInViewProps> = ({
       </div>
 
       {/* Switch to Spectator Button */}
-      <div className="text-center">
+      <div className="text-center pt-2">
         <button
           onClick={onSwitchToSpectator}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-chalk/50 hover:text-ball transition"
+          className="inline-flex items-center gap-1.5 text-xs font-black text-slate-500 hover:text-brand-orange transition underline"
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="w-3.5 h-3.5" />
           <span>Lihat Live Scoreboard / Mode Penonton</span>
         </button>
       </div>

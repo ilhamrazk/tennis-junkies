@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Match, GameType, ArchivedSession } from '../types/tennis';
 import { History, Pencil, Check, FolderArchive, Play, Share2, Calendar, Trophy } from 'lucide-react';
-import { EmptyState } from './ui';
 
 interface MatchHistoryProps {
   historyMatches: Match[];
@@ -23,9 +22,6 @@ interface MatchHistoryProps {
     scoreB: number
   ) => void;
 }
-
-const select =
-  'w-full rounded-xl border border-white/10 bg-ink-900 px-3 py-2.5 text-sm font-semibold text-chalk focus:border-ball/70 focus:outline-none';
 
 export const MatchHistory: React.FC<MatchHistoryProps> = ({
   historyMatches,
@@ -77,37 +73,12 @@ export const MatchHistory: React.FC<MatchHistoryProps> = ({
     setEditingMatchId(null);
   };
 
-  const isDouble = gameType === 'Double';
-
-  const PlayerSelects: React.FC<{ k1: 'pA1' | 'pB1'; k2: 'pA2' | 'pB2' }> = ({ k1, k2 }) => (
-    <div className="space-y-1.5">
-      <select
-        value={editState[k1]}
-        onChange={(e) => setEditState({ ...editState, [k1]: e.target.value })}
-        className={select}
-      >
-        {allPlayers.map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
-      {isDouble && (
-        <select
-          value={editState[k2]}
-          onChange={(e) => setEditState({ ...editState, [k2]: e.target.value })}
-          className={select}
-        >
-          <option value="">- Kosong -</option>
-          {allPlayers.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      )}
-    </div>
-  );
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
 
   const formatDate = (isoString: string) => {
     try {
@@ -124,29 +95,36 @@ export const MatchHistory: React.FC<MatchHistoryProps> = ({
     }
   };
 
+  const isDouble = gameType === 'Double';
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-end justify-between px-1">
-        <div>
-          <p className="eyebrow mb-1">Log &amp; Arsip</p>
-          <h2 className="font-display text-4xl font-extrabold leading-none tracking-tight">Riwayat</h2>
-        </div>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Title Header */}
+      <div className="flex items-center justify-between px-2">
+        <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+          <History className="w-6 h-6 text-blue-500" />
+          <span>Riwayat Pertandingan</span>
+        </h2>
       </div>
 
-      {/* Sub Tabs: Sesi Ini vs Arsip Sesi Mabar */}
-      <div className="flex rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      {/* Segmented Switcher: Match Sesi Ini vs Arsip Sesi Mabar */}
+      <div className="flex bg-white p-1 rounded-2xl border-2 border-slate-200 shadow-sm max-w-md mx-auto">
         <button
           onClick={() => setSubTab('current')}
-          className={`flex-1 rounded-xl py-2.5 text-xs font-extrabold transition ${
-            subTab === 'current' ? 'bg-ball text-ink-950 shadow-ball' : 'text-chalk/60 hover:text-chalk'
+          className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+            subTab === 'current'
+              ? 'bg-brand-orange text-white shadow-brand'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Match Sesi Ini ({historyMatches.length})
         </button>
         <button
           onClick={() => setSubTab('archive')}
-          className={`flex-1 rounded-xl py-2.5 text-xs font-extrabold transition ${
-            subTab === 'archive' ? 'bg-ball text-ink-950 shadow-ball' : 'text-chalk/60 hover:text-chalk'
+          className={`flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-black transition-all ${
+            subTab === 'archive'
+              ? 'bg-brand-orange text-white shadow-brand'
+              : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           Arsip Sesi Mabar ({archivedSessions.length})
@@ -155,134 +133,267 @@ export const MatchHistory: React.FC<MatchHistoryProps> = ({
 
       {subTab === 'current' ? (
         historyMatches.length === 0 ? (
-          <EmptyState
-            icon={<History className="h-8 w-8" />}
-            title="Belum ada pertandingan selesai"
-            body="Pertandingan yang telah selesai dan disimpan akan muncul di sini."
-          />
+          <div className="bg-white p-10 rounded-3xl text-center text-slate-500 space-y-2 border-2 border-slate-200 shadow-card">
+            <History className="w-12 h-12 text-slate-300 mx-auto" />
+            <p className="text-base font-black text-slate-700">Belum ada pertandingan yang selesai.</p>
+            <p className="text-xs text-slate-400">
+              Pertandingan yang selesai diinput skornya akan tersimpan otomatis di sini.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {historyMatches.map((m, i) => {
+          <div className="space-y-4">
+            {historyMatches.map((m) => {
               const isEditing = editingMatchId === m.id;
               const aWon = (m.scoreA ?? 0) > (m.scoreB ?? 0);
               const bWon = (m.scoreB ?? 0) > (m.scoreA ?? 0);
 
               return (
-                <article
+                <div
                   key={m.id}
-                  style={{ animationDelay: `${i * 40}ms` }}
-                  className="card animate-fade-up p-4 transition-colors hover:border-white/15"
+                  className="bg-white rounded-3xl p-5 sm:p-6 border-2 border-slate-200 shadow-card space-y-4 hover:border-slate-300 transition-colors"
                 >
-                  <div className="mb-3 flex items-center justify-between text-xs font-bold text-chalk/45">
+                  {/* Top Bar: Round, Court & Edit Trigger */}
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-md bg-white/[0.06] px-2 py-0.5 text-chalk/75">
-                        Ronde {m.round}
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800">
+                        ROUND {m.round}
                       </span>
-                      <span>Court {m.court}</span>
+                      <span className="text-xs font-black text-slate-500">
+                        COURT {m.court}
+                      </span>
                     </div>
+
                     {!isEditing ? (
                       <button
                         onClick={() => startEdit(m)}
-                        className="flex items-center gap-1 text-chalk/50 hover:text-ball transition"
+                        className="text-xs font-extrabold text-slate-500 hover:text-brand-orange flex items-center gap-1 transition"
                       >
-                        <Pencil className="h-3 w-3" />
-                        <span>Koreksi</span>
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Koreksi Skor / Pemain</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => saveEdit(m)}
-                        className="flex items-center gap-1 font-bold text-ball hover:underline"
+                        className="text-xs font-black text-emerald-600 hover:text-emerald-700 flex items-center gap-1 transition"
                       >
-                        <Check className="h-3 w-3" />
-                        <span>Simpan</span>
+                        <Check className="w-4 h-4" />
+                        <span>Simpan Perubahan</span>
                       </button>
                     )}
                   </div>
 
                   {!isEditing ? (
-                    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    /* Display Mode */
+                    <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-center">
                       {/* Team A */}
-                      <div className="min-w-0 space-y-0.5 border-l-4 border-ball pl-3">
-                        {[m.teamA1, isDouble ? m.teamA2 : ''].filter(Boolean).map((n) => (
-                          <p
-                            key={n}
-                            onClick={() => onSelectPlayer && onSelectPlayer(n)}
-                            className="cursor-pointer truncate text-sm font-bold text-chalk hover:text-ball transition"
-                            title="Tap untuk lihat profil"
-                          >
-                            {n}
-                          </p>
-                        ))}
+                      <div
+                        className={`md:col-span-3 p-3.5 rounded-2xl border-2 transition ${
+                          aWon
+                            ? 'bg-orange-50 border-orange-300'
+                            : 'bg-slate-50 border-slate-200 opacity-80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div
+                              onClick={() => onSelectPlayer && onSelectPlayer(m.teamA1)}
+                              className="flex items-center gap-2 cursor-pointer group"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-brand-orange text-white text-[10px] font-black flex items-center justify-center">
+                                {getInitials(m.teamA1)}
+                              </div>
+                              <span className="font-extrabold text-slate-900 text-sm group-hover:text-brand-orange transition">
+                                {m.teamA1}
+                              </span>
+                            </div>
+
+                            {isDouble && m.teamA2 && (
+                              <div
+                                onClick={() => onSelectPlayer && onSelectPlayer(m.teamA2)}
+                                className="flex items-center gap-2 cursor-pointer group"
+                              >
+                                <div className="w-6 h-6 rounded-lg bg-brand-orange text-white text-[10px] font-black flex items-center justify-center">
+                                  {getInitials(m.teamA2)}
+                                </div>
+                                <span className="font-extrabold text-slate-900 text-sm group-hover:text-brand-orange transition">
+                                  {m.teamA2}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-2xl font-black font-mono text-brand-orange">
+                              {m.scoreA}
+                            </span>
+                            {aWon && (
+                              <span className="block text-[10px] font-black text-emerald-600 uppercase">
+                                Winner
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Score Box */}
-                      <div className="num flex items-center gap-2 rounded-xl bg-ink-900/90 px-3 py-1.5 text-xl font-extrabold">
-                        <span className={aWon ? 'text-ball' : 'text-chalk/40'}>{m.scoreA}</span>
-                        <span className="text-xs text-chalk/25">-</span>
-                        <span className={bWon ? 'text-clay' : 'text-chalk/40'}>{m.scoreB}</span>
+                      {/* VS Divider */}
+                      <div className="md:col-span-1 text-center font-black text-xs text-slate-400">
+                        VS
                       </div>
 
                       {/* Team B */}
-                      <div className="min-w-0 space-y-0.5 border-r-4 border-clay pr-3 text-right">
-                        {[m.teamB1, isDouble ? m.teamB2 : ''].filter(Boolean).map((n) => (
-                          <p
-                            key={n}
-                            onClick={() => onSelectPlayer && onSelectPlayer(n)}
-                            className="cursor-pointer truncate text-sm font-bold text-chalk hover:text-clay transition"
-                            title="Tap untuk lihat profil"
-                          >
-                            {n}
-                          </p>
-                        ))}
+                      <div
+                        className={`md:col-span-3 p-3.5 rounded-2xl border-2 transition ${
+                          bWon
+                            ? 'bg-emerald-50 border-emerald-300'
+                            : 'bg-slate-50 border-slate-200 opacity-80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div
+                              onClick={() => onSelectPlayer && onSelectPlayer(m.teamB1)}
+                              className="flex items-center gap-2 cursor-pointer group"
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">
+                                {getInitials(m.teamB1)}
+                              </div>
+                              <span className="font-extrabold text-slate-900 text-sm group-hover:text-brand-orange transition">
+                                {m.teamB1}
+                              </span>
+                            </div>
+
+                            {isDouble && m.teamB2 && (
+                              <div
+                                onClick={() => onSelectPlayer && onSelectPlayer(m.teamB2)}
+                                className="flex items-center gap-2 cursor-pointer group"
+                              >
+                                <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">
+                                  {getInitials(m.teamB2)}
+                                </div>
+                                <span className="font-extrabold text-slate-900 text-sm group-hover:text-brand-orange transition">
+                                  {m.teamB2}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-right">
+                            <span className="text-2xl font-black font-mono text-emerald-700">
+                              {m.scoreB}
+                            </span>
+                            {bWon && (
+                              <span className="block text-[10px] font-black text-emerald-600 uppercase">
+                                Winner
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    /* Edit Form */
-                    <div className="space-y-3 pt-1">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="eyebrow mb-1.5 !text-[10px] !text-ball">Tim A</p>
-                          <PlayerSelects k1="pA1" k2="pA2" />
-                        </div>
-                        <div>
-                          <p className="eyebrow mb-1.5 !text-[10px] !text-clay">Tim B</p>
-                          <PlayerSelects k1="pB1" k2="pB2" />
-                        </div>
-                      </div>
+                    /* Edit Mode Form */
+                    <div className="space-y-4 pt-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Edit Team A */}
+                        <div className="space-y-2 p-3 bg-orange-50 rounded-2xl border border-orange-200">
+                          <span className="text-[10px] font-black uppercase text-brand-orange">
+                            Lineup Tim A &amp; Skor
+                          </span>
+                          <select
+                            value={editState.pA1}
+                            onChange={(e) => setEditState({ ...editState, pA1: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold"
+                          >
+                            {allPlayers.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
 
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="number"
-                          value={editState.scoreA}
-                          onChange={(e) => setEditState({ ...editState, scoreA: e.target.value })}
-                          className="field !w-20 text-center font-display text-xl font-black"
-                        />
-                        <span className="font-extrabold text-chalk/30">-</span>
-                        <input
-                          type="number"
-                          value={editState.scoreB}
-                          onChange={(e) => setEditState({ ...editState, scoreB: e.target.value })}
-                          className="field !w-20 text-center font-display text-xl font-black"
-                        />
+                          {isDouble && (
+                            <select
+                              value={editState.pA2}
+                              onChange={(e) => setEditState({ ...editState, pA2: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold"
+                            >
+                              <option value="">- Kosong -</option>
+                              {allPlayers.map((p) => (
+                                <option key={p} value={p}>
+                                  {p}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          <input
+                            type="number"
+                            value={editState.scoreA}
+                            onChange={(e) => setEditState({ ...editState, scoreA: e.target.value })}
+                            className="w-full p-2 text-center bg-white border border-orange-300 rounded-xl text-lg font-black text-brand-orange"
+                            placeholder="Skor Tim A"
+                          />
+                        </div>
+
+                        {/* Edit Team B */}
+                        <div className="space-y-2 p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                          <span className="text-[10px] font-black uppercase text-emerald-800">
+                            Lineup Tim B &amp; Skor
+                          </span>
+                          <select
+                            value={editState.pB1}
+                            onChange={(e) => setEditState({ ...editState, pB1: e.target.value })}
+                            className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold"
+                          >
+                            {allPlayers.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
+                              </option>
+                            ))}
+                          </select>
+
+                          {isDouble && (
+                            <select
+                              value={editState.pB2}
+                              onChange={(e) => setEditState({ ...editState, pB2: e.target.value })}
+                              className="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-bold"
+                            >
+                              <option value="">- Kosong -</option>
+                              {allPlayers.map((p) => (
+                                <option key={p} value={p}>
+                                  {p}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+
+                          <input
+                            type="number"
+                            value={editState.scoreB}
+                            onChange={(e) => setEditState({ ...editState, scoreB: e.target.value })}
+                            className="w-full p-2 text-center bg-white border border-emerald-300 rounded-xl text-lg font-black text-emerald-700"
+                            placeholder="Skor Tim B"
+                          />
+                        </div>
                       </div>
 
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => setEditingMatchId(null)}
-                          className="btn-ghost !py-2 !text-xs"
+                          className="btn-secondary py-2 px-4 text-xs font-bold"
                         >
                           Batal
                         </button>
                         <button
                           onClick={() => saveEdit(m)}
-                          className="btn-primary !px-4 !py-2 !text-xs"
+                          className="btn-primary py-2 px-5 text-xs font-black"
                         >
                           Simpan Koreksi
                         </button>
                       </div>
                     </div>
                   )}
-                </article>
+                </div>
               );
             })}
           </div>
@@ -290,50 +401,59 @@ export const MatchHistory: React.FC<MatchHistoryProps> = ({
       ) : (
         /* Archived Sessions List */
         archivedSessions.length === 0 ? (
-          <EmptyState
-            icon={<FolderArchive className="h-8 w-8" />}
-            title="Belum ada arsip sesi"
-            body="Sesi mabar yang dibuat dan dimainkan akan otomatis terarsip di cloud database."
-          />
+          <div className="bg-white p-10 rounded-3xl text-center text-slate-500 space-y-2 border-2 border-slate-200 shadow-card">
+            <FolderArchive className="w-12 h-12 text-slate-300 mx-auto" />
+            <p className="text-base font-black text-slate-700">Belum ada arsip sesi mabar.</p>
+            <p className="text-xs text-slate-400">
+              Setiap sesi mabar yang dimainkan akan terarsip otomatis di database cloud.
+            </p>
+          </div>
         ) : (
-          <div className="space-y-3.5">
+          <div className="space-y-4">
             {archivedSessions.map((s) => (
-              <div key={s.id} className="card space-y-3 p-4">
+              <div
+                key={s.id}
+                className="bg-white rounded-3xl p-5 sm:p-6 border-2 border-slate-200 shadow-card space-y-4 hover:border-slate-300 transition-colors"
+              >
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="eyebrow flex items-center gap-1 !text-[10px]">
-                      <Calendar className="h-3 w-3" />
+                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-brand-orange" />
                       {formatDate(s.createdAt)}
                     </span>
-                    <h4 className="mt-0.5 font-display text-base font-bold text-chalk">{s.eventTitle}</h4>
+                    <h4 className="text-base sm:text-lg font-black text-slate-900 mt-0.5">
+                      {s.eventTitle}
+                    </h4>
                   </div>
-                  <span className="rounded-lg bg-white/[0.06] px-2.5 py-1 text-xs font-bold text-chalk/70">
+                  <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-black">
                     Host: {s.hostName || 'Admin'}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-chalk/65">
-                  <span className="rounded-lg bg-white/[0.04] px-2 py-0.5">
-                    {s.gameType === 'Double' ? 'Ganda' : 'Tunggal'} &middot; {s.courtCount} Lapangan
+                <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-600">
+                  <span className="bg-slate-100 px-2.5 py-1 rounded-lg">
+                    {s.gameType === 'Double' ? 'Ganda' : 'Tunggal'} &middot; {s.courtCount} Court
                   </span>
-                  <span className="rounded-lg bg-white/[0.04] px-2 py-0.5">
+                  <span className="bg-slate-100 px-2.5 py-1 rounded-lg">
                     {s.matchCount} Match Selesai
                   </span>
                 </div>
 
                 {s.podium && s.podium.length > 0 && (
-                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-2.5">
-                    <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-chalk/50 uppercase tracking-wider">
-                      <Trophy className="h-3 w-3 text-ball" />
+                  <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+                    <div className="text-[10px] font-black uppercase text-slate-500 tracking-wider mb-1.5 flex items-center gap-1">
+                      <Trophy className="w-3.5 h-3.5 text-amber-500" />
                       <span>Podium Juara</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {s.podium.slice(0, 3).map((pod) => (
-                        <div key={pod.name} className="flex min-w-0 items-center gap-1.5">
+                        <div key={pod.name} className="flex items-center gap-1.5">
                           <span className="text-xs">
                             {pod.place === 1 ? '🥇' : pod.place === 2 ? '🥈' : '🥉'}
                           </span>
-                          <span className="truncate text-xs font-bold text-chalk/90">{pod.name}</span>
+                          <span className="text-xs font-extrabold text-slate-900 truncate">
+                            {pod.name}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -344,18 +464,18 @@ export const MatchHistory: React.FC<MatchHistoryProps> = ({
                   {onSelectSession && (
                     <button
                       onClick={() => onSelectSession(s.id)}
-                      className="btn-primary flex-1 !py-2.5 !text-xs font-extrabold"
+                      className="btn-primary py-2.5 px-4 text-xs font-black flex-1 flex items-center justify-center gap-1.5"
                     >
-                      <Play className="h-3.5 w-3.5 fill-current" />
+                      <Play className="w-3.5 h-3.5 fill-current" />
                       <span>Buka Sesi Ini</span>
                     </button>
                   )}
                   {onOpenPosterForSession && (
                     <button
                       onClick={() => onOpenPosterForSession(s)}
-                      className="btn-ghost flex-1 !py-2.5 !text-xs font-bold"
+                      className="btn-secondary py-2.5 px-4 text-xs font-bold flex-1 flex items-center justify-center gap-1.5"
                     >
-                      <Share2 className="h-3.5 w-3.5" />
+                      <Share2 className="w-3.5 h-3.5" />
                       <span>Poster Sesi</span>
                     </button>
                   )}

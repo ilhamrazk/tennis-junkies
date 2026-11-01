@@ -1,7 +1,6 @@
 import React from 'react';
 import { PlayerCareerStats, PlayerStanding } from '../types/tennis';
-import { Sheet, Avatar } from './ui';
-import { Trophy, Flame, Users, Swords, Activity } from 'lucide-react';
+import { X, Flame, Users, Swords, Activity, Trophy } from 'lucide-react';
 
 interface PlayerProfileModalProps {
   playerName: string;
@@ -16,7 +15,6 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   currentStanding,
   onClose,
 }) => {
-  // If careerStats is missing, fallback using currentStanding or defaults
   const stats: PlayerCareerStats = careerStats || {
     rank: currentStanding?.rank ?? 1,
     name: playerName,
@@ -39,77 +37,105 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
       : [],
   };
 
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  };
+
   return (
-    <Sheet onClose={onClose}>
-      <div className="space-y-6">
-        {/* Header Profile */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 relative border-2 border-slate-200 text-slate-900 max-h-[90vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-1.5 rounded-full hover:bg-slate-100 transition"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Profile Header */}
         <div className="flex items-center gap-4">
-          <Avatar name={stats.name} tone="ball" size="lg" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-orange to-orange-500 text-white font-black text-2xl flex items-center justify-center shadow-brand shrink-0">
+            {getInitials(stats.name)}
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="num flex h-6 items-center rounded-lg bg-ball px-2 text-xs font-black text-ink-950">
-                Rank #{stats.rank || 1}
+              <span className="bg-orange-100 text-brand-orange px-2.5 py-0.5 rounded-full text-xs font-black">
+                RANK #{stats.rank || 1}
               </span>
               {stats.winRate >= 60 && (
-                <span className="flex items-center gap-1 text-[11px] font-extrabold text-clay">
-                  <Flame className="h-3.5 w-3.5 fill-clay" /> On Fire
+                <span className="flex items-center gap-1 text-[11px] font-extrabold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  <Flame className="w-3 h-3 fill-amber-500 text-amber-500" /> On Fire
                 </span>
               )}
             </div>
-            <h3 className="mt-1 truncate font-display text-2xl font-black tracking-tight text-chalk">
-              {stats.name}
-            </h3>
-            <p className="text-xs font-semibold text-chalk/50">Statistik Karir Komunitas</p>
+            <h3 className="text-xl font-black text-slate-900 truncate mt-1">{stats.name}</h3>
+            <p className="text-xs text-slate-500 font-bold">Statistik Karir Komunitas</p>
           </div>
         </div>
 
-        {/* Win Rate & Primary Highlights */}
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="card flex flex-col items-center justify-center p-3 text-center">
-            <span className="eyebrow !text-[9px]">Win Rate</span>
-            <span className="num mt-1 text-2xl font-black text-ball">{stats.winRate}%</span>
-            <span className="text-[10px] font-semibold text-chalk/40">
+        {/* Key Highlight Stats */}
+        <div className="grid grid-cols-3 gap-2.5 text-center">
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Win Rate
+            </span>
+            <span className="block text-xl font-black text-brand-orange mt-0.5 font-mono">
+              {stats.winRate}%
+            </span>
+            <span className="text-[11px] font-bold text-slate-500">
               {stats.won}W - {stats.lost}L
             </span>
           </div>
 
-          <div className="card flex flex-col items-center justify-center p-3 text-center">
-            <span className="eyebrow !text-[9px]">Total Game</span>
-            <span className="num mt-1 text-2xl font-black text-chalk">{stats.played}</span>
-            <span className="text-[10px] font-semibold text-chalk/40">Pertandingan</span>
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Total Game
+            </span>
+            <span className="block text-xl font-black text-slate-900 mt-0.5 font-mono">
+              {stats.played}
+            </span>
+            <span className="text-[11px] font-bold text-slate-500">Match Selesai</span>
           </div>
 
-          <div className="card flex flex-col items-center justify-center p-3 text-center">
-            <span className="eyebrow !text-[9px]">Selisih Poin</span>
+          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Selisih Poin
+            </span>
             <span
-              className={`num mt-1 text-2xl font-black ${
-                stats.diff > 0 ? 'text-ball' : stats.diff < 0 ? 'text-clay' : 'text-chalk'
+              className={`block text-xl font-black mt-0.5 font-mono ${
+                stats.diff > 0
+                  ? 'text-emerald-600'
+                  : stats.diff < 0
+                    ? 'text-red-500'
+                    : 'text-slate-700'
               }`}
             >
               {stats.diff > 0 ? `+${stats.diff}` : stats.diff}
             </span>
-            <span className="text-[10px] font-semibold text-chalk/40">Total: {stats.pointsScored} pts</span>
+            <span className="text-[11px] font-bold text-slate-500">{stats.pointsScored} Total Pts</span>
           </div>
         </div>
 
         {/* Form / Last 5 matches */}
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="eyebrow flex items-center gap-1.5 !text-[10px]">
-              <Activity className="h-3.5 w-3.5 text-ball" />
-              <span>Performa 5 Game Terakhir</span>
-            </p>
-            <span className="text-[10px] font-semibold text-chalk/40">Terbaru &rarr; Lama</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-brand-orange" />
+              <span>5 Pertandingan Terakhir</span>
+            </span>
+            <span className="text-[10px] font-bold text-slate-400">Terbaru &rarr; Lama</span>
           </div>
           {stats.recentForm && stats.recentForm.length > 0 ? (
             <div className="flex gap-2">
               {stats.recentForm.map((result, idx) => (
                 <div
                   key={idx}
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl font-display text-sm font-black transition ${
+                  className={`w-9 h-9 rounded-xl font-black text-sm flex items-center justify-center shadow-xs ${
                     result === 'W'
-                      ? 'bg-ball text-ink-950 shadow-ball'
-                      : 'border border-clay/40 bg-clay/20 text-clay'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-red-500 text-white'
                   }`}
                   title={result === 'W' ? 'Menang' : 'Kalah'}
                 >
@@ -118,79 +144,85 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-chalk/40 italic">Belum ada catatan form pertandingan.</p>
+            <p className="text-xs text-slate-400 italic">Belum ada catatan form pertandingan.</p>
           )}
         </div>
 
         {/* Synergy Cards: Best Partner & Top Rival */}
-        <div className="space-y-2.5">
+        <div className="space-y-3">
           {/* Best Partner */}
-          <div className="card p-3.5">
+          <div className="bg-orange-50/70 border border-orange-200 rounded-2xl p-3.5">
             <div className="flex items-center justify-between">
-              <span className="eyebrow flex items-center gap-1.5 !text-[10px] !text-ball">
-                <Users className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-brand-orange flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
                 <span>Partner Terbaik (Chemistry)</span>
               </span>
               {stats.bestPartner && (
-                <span className="rounded-full bg-ball-soft px-2 py-0.5 text-[10px] font-extrabold text-ball">
-                  {stats.bestPartner.winRate}% Menang
+                <span className="text-[10px] font-black bg-white text-brand-orange px-2 py-0.5 rounded-md border border-orange-200">
+                  {stats.bestPartner.winRate}% Win Rate
                 </span>
               )}
             </div>
             {stats.bestPartner ? (
-              <div className="mt-2.5 flex items-center justify-between">
+              <div className="mt-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Avatar name={stats.bestPartner.name} tone="ball" size="sm" />
-                  <span className="font-display text-sm font-bold text-chalk">
+                  <div className="w-7 h-7 rounded-lg bg-brand-orange text-white text-[10px] font-black flex items-center justify-center">
+                    {getInitials(stats.bestPartner.name)}
+                  </div>
+                  <span className="font-extrabold text-sm text-slate-900">
                     {stats.bestPartner.name}
                   </span>
                 </div>
-                <span className="text-xs font-semibold text-chalk/60">
+                <span className="text-xs font-bold text-slate-600">
                   {stats.bestPartner.won} menang dari {stats.bestPartner.played} game
                 </span>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-chalk/40">Belum ada riwayat ganda yang cukup.</p>
+              <p className="mt-1 text-xs text-slate-400">Belum ada riwayat ganda yang cukup.</p>
             )}
           </div>
 
           {/* Top Rival */}
-          <div className="card p-3.5">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
             <div className="flex items-center justify-between">
-              <span className="eyebrow flex items-center gap-1.5 !text-[10px] !text-clay">
-                <Swords className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Swords className="w-3.5 h-3.5 text-red-500" />
                 <span>Rival Terberat (Head-to-Head)</span>
               </span>
               {stats.topRival && (
-                <span className="rounded-full bg-clay-soft px-2 py-0.5 text-[10px] font-extrabold text-clay">
-                  {stats.topRival.played}x Berhadapan
+                <span className="text-[10px] font-black bg-white text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                  {stats.topRival.played}x Duel
                 </span>
               )}
             </div>
             {stats.topRival ? (
-              <div className="mt-2.5 flex items-center justify-between">
+              <div className="mt-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Avatar name={stats.topRival.name} tone="clay" size="sm" />
-                  <span className="font-display text-sm font-bold text-chalk">
+                  <div className="w-7 h-7 rounded-lg bg-slate-700 text-white text-[10px] font-black flex items-center justify-center">
+                    {getInitials(stats.topRival.name)}
+                  </div>
+                  <span className="font-extrabold text-sm text-slate-900">
                     {stats.topRival.name}
                   </span>
                 </div>
-                <span className="num text-xs font-extrabold text-chalk/80">
-                  H2H: <span className="text-ball">{stats.topRival.won}W</span> -{' '}
-                  <span className="text-clay">{stats.topRival.lost}L</span>
+                <span className="text-xs font-bold font-mono">
+                  <span className="text-emerald-600 font-black">{stats.topRival.won}W</span> -{' '}
+                  <span className="text-red-500 font-black">{stats.topRival.lost}L</span>
                 </span>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-chalk/40">Belum ada rivalitas yang tercatat.</p>
+              <p className="mt-1 text-xs text-slate-400">Belum ada rivalitas yang tercatat.</p>
             )}
           </div>
         </div>
 
-        {/* Footer close */}
-        <button onClick={onClose} className="btn-ghost w-full !py-3.5 text-xs font-bold">
+        <button
+          onClick={onClose}
+          className="w-full btn-secondary py-3 text-xs font-bold"
+        >
           Tutup Profil
         </button>
       </div>
-    </Sheet>
+    </div>
   );
 };

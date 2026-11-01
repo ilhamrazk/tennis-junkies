@@ -16,14 +16,14 @@ export function generateLeaderboardPoster(
 
   // 1. Background (Dark Gradient)
   const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-  bgGradient.addColorStop(0, '#0C1710');
-  bgGradient.addColorStop(0.5, '#122019');
-  bgGradient.addColorStop(1, '#07100B');
+  bgGradient.addColorStop(0, '#111215');
+  bgGradient.addColorStop(0.5, '#181A1E');
+  bgGradient.addColorStop(1, '#0F1012');
   ctx.fillStyle = bgGradient;
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   // Subtle decorative tennis court grid line
-  ctx.strokeStyle = 'rgba(216, 245, 59, 0.08)';
+  ctx.strokeStyle = 'rgba(255, 107, 0, 0.08)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(50, 0);
@@ -33,7 +33,7 @@ export function generateLeaderboardPoster(
   ctx.stroke();
 
   // 2. Header Tag
-  ctx.fillStyle = '#D8F53B';
+  ctx.fillStyle = '#FF6B00';
   ctx.font = '900 15px Inter, Arial, sans-serif';
   ctx.fillText('THE JUNKIES CO. • LIVE LEADERBOARD', 55, 75);
 
@@ -43,7 +43,7 @@ export function generateLeaderboardPoster(
   ctx.fillText('THE JUNKIES GAME', 55, 130);
 
   // 4. Subtitle / Event Name
-  ctx.fillStyle = '#FF7A45';
+  ctx.fillStyle = '#FF8533';
   ctx.font = '800 24px Inter, Arial, sans-serif';
   const displaySub = eventTitle.length > 40 ? eventTitle.substring(0, 38) + '...' : eventTitle;
   ctx.fillText(displaySub.toUpperCase(), 55, 170);
@@ -106,13 +106,13 @@ export function generateLeaderboardPoster(
 
     // Rank colors
     if (idx === 0) {
-      ctx.fillStyle = '#D8F53B';
+      ctx.fillStyle = '#FF6B00';
       ctx.font = '900 28px Inter, Arial, sans-serif';
     } else if (idx === 1) {
-      ctx.fillStyle = '#F1F5EC';
+      ctx.fillStyle = '#F59E0B';
       ctx.font = '900 28px Inter, Arial, sans-serif';
     } else if (idx === 2) {
-      ctx.fillStyle = '#D8F53B';
+      ctx.fillStyle = '#10B981';
       ctx.font = '900 28px Inter, Arial, sans-serif';
     } else {
       ctx.fillStyle = '#64748B';
@@ -134,13 +134,13 @@ export function generateLeaderboardPoster(
     ctx.textAlign = 'center';
     ctx.fillStyle = '#94A3B8';
     ctx.fillText(p.played.toString(), colX.played, currentY - 6);
-    ctx.fillStyle = '#D8F53B';
+    ctx.fillStyle = '#10B981';
     ctx.fillText(p.won.toString(), colX.won, currentY - 6);
-    ctx.fillStyle = '#FF7A45';
+    ctx.fillStyle = '#EF4444';
     ctx.fillText(p.lost.toString(), colX.lost, currentY - 6);
 
     // Points
-    ctx.fillStyle = idx < 3 ? '#D8F53B' : '#E2E8F0';
+    ctx.fillStyle = idx < 3 ? '#FF6B00' : '#E2E8F0';
     ctx.font = '900 26px Inter, Arial, sans-serif';
     ctx.fillText(p.points.toString(), colX.points, currentY - 6);
   }
@@ -148,7 +148,7 @@ export function generateLeaderboardPoster(
   // 8. Footer
   const footerY = canvasHeight - 48;
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#D8F53B';
+  ctx.fillStyle = '#FF6B00';
   ctx.font = '700 18px Inter, Arial, sans-serif';
   ctx.fillText('The Junkies Co. Matchmaking App  •  Official Standing System', 55, footerY);
 
@@ -162,4 +162,3 @@ export function downloadPosterFile(dataUrl: string, eventTitle: string) {
   link.href = dataUrl;
   link.click();
 }
-

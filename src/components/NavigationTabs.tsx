@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, History, Settings2, Zap } from 'lucide-react';
+import { Trophy, History, Settings, Flame } from 'lucide-react';
 
 export type TabType = 'courts' | 'standings' | 'history' | 'setup';
 
@@ -15,59 +15,89 @@ interface NavigationTabsProps {
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   activeTab,
   onSelectTab,
+  activeMatchCount,
   completedMatchCount,
   isSessionActive,
   currentRound,
 }) => {
-  const tabs: { id: TabType; label: string; icon: React.ReactNode; badge?: string }[] = [
-    {
-      id: 'courts',
-      label: 'Lapangan',
-      icon: <Zap className="h-[18px] w-[18px]" />,
-      badge: isSessionActive ? `R${currentRound}` : undefined,
-    },
-    { id: 'standings', label: 'Klasemen', icon: <Trophy className="h-[18px] w-[18px]" /> },
-    {
-      id: 'history',
-      label: 'Riwayat',
-      icon: <History className="h-[18px] w-[18px]" />,
-      badge: completedMatchCount > 0 ? String(completedMatchCount) : undefined,
-    },
-    { id: 'setup', label: 'Setup', icon: <Settings2 className="h-[18px] w-[18px]" /> },
-  ];
-
   return (
-    <nav
-      aria-label="Navigasi utama"
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-    >
-      <div className="flex w-full max-w-md items-center gap-1 rounded-[1.75rem] border border-white/10 bg-ink-800/90 p-1.5 shadow-dock backdrop-blur-xl">
-        {tabs.map((t) => {
-          const active = activeTab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => onSelectTab(t.id)}
-              aria-current={active ? 'page' : undefined}
-              className={`relative flex flex-1 select-none flex-col items-center justify-center gap-1 rounded-[1.25rem] py-2.5 text-[11px] font-bold transition-all duration-200 ${
-                active ? 'bg-ball text-ink-950 shadow-ball' : 'text-chalk/55 hover:text-chalk'
+    <div className="w-full flex justify-center mb-6">
+      <div className="bg-white p-1.5 rounded-2xl flex items-center gap-1.5 max-w-2xl w-full border-2 border-slate-200 shadow-sm overflow-x-auto">
+        {/* Tab 1: Lapangan */}
+        <button
+          onClick={() => onSelectTab('courts')}
+          className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 select-none ${
+            activeTab === 'courts'
+              ? 'bg-brand-orange text-white shadow-brand'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Flame className={`w-4 h-4 ${activeTab === 'courts' ? 'text-white' : 'text-brand-orange'}`} />
+          <span>Lapangan</span>
+          {isSessionActive && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === 'courts'
+                  ? 'bg-black/20 text-white'
+                  : 'bg-orange-100 text-brand-orange'
               }`}
             >
-              {t.icon}
-              <span>{t.label}</span>
-              {t.badge && (
-                <span
-                  className={`absolute right-2 top-1.5 min-w-[18px] rounded-full px-1 text-center text-[9px] font-extrabold leading-[16px] ${
-                    active ? 'bg-ink-950 text-ball' : 'bg-white/10 text-chalk/80'
-                  }`}
-                >
-                  {t.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+              R{currentRound}
+            </span>
+          )}
+        </button>
+
+        {/* Tab 2: Klasemen */}
+        <button
+          onClick={() => onSelectTab('standings')}
+          className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 select-none ${
+            activeTab === 'standings'
+              ? 'bg-brand-orange text-white shadow-brand'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <Trophy className={`w-4 h-4 ${activeTab === 'standings' ? 'text-white' : 'text-amber-500'}`} />
+          <span>Klasemen</span>
+        </button>
+
+        {/* Tab 3: Riwayat */}
+        <button
+          onClick={() => onSelectTab('history')}
+          className={`flex-1 min-w-[100px] py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 select-none ${
+            activeTab === 'history'
+              ? 'bg-brand-orange text-white shadow-brand'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <History className={`w-4 h-4 ${activeTab === 'history' ? 'text-white' : 'text-blue-500'}`} />
+          <span>Riwayat</span>
+          {completedMatchCount > 0 && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                activeTab === 'history'
+                  ? 'bg-black/20 text-white'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {completedMatchCount}
+            </span>
+          )}
+        </button>
+
+        {/* Tab 4: Setup */}
+        <button
+          onClick={() => onSelectTab('setup')}
+          className={`py-2.5 px-3.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-1.5 select-none ${
+            activeTab === 'setup'
+              ? 'bg-slate-900 text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+          title="Konfigurasi Sesi Mabar"
+        >
+          <Settings className="w-4 h-4" />
+          <span className="hidden sm:inline">Setup</span>
+        </button>
       </div>
-    </nav>
+    </div>
   );
 };

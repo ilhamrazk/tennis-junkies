@@ -9,12 +9,14 @@ interface SpectatorViewProps {
   activeMatches: Match[];
   standings: PlayerStanding[];
   onBackToHost: () => void;
+  onSelectPlayer?: (name: string) => void;
 }
 
 export const SpectatorView: React.FC<SpectatorViewProps> = ({
   session,
   activeMatches,
   standings,
+  onSelectPlayer,
 }) => {
   const [searchPlayer, setSearchPlayer] = useState('');
   const isDouble = session.gameType === 'Double';
@@ -95,7 +97,14 @@ export const SpectatorView: React.FC<SpectatorViewProps> = ({
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                     <div className="min-w-0 space-y-0.5 border-l-4 border-ball pl-3">
                       {teamA.map((n) => (
-                        <p key={n} className="truncate text-base font-bold">
+                        <p
+                          key={n}
+                          onClick={() => onSelectPlayer && onSelectPlayer(n)}
+                          className={`truncate text-base font-bold text-chalk ${
+                            onSelectPlayer ? 'cursor-pointer hover:text-ball transition' : ''
+                          }`}
+                          title="Tap untuk lihat profil"
+                        >
                           {n}
                         </p>
                       ))}
@@ -103,7 +112,14 @@ export const SpectatorView: React.FC<SpectatorViewProps> = ({
                     <span className="font-display text-xs font-extrabold text-chalk/30">VS</span>
                     <div className="min-w-0 space-y-0.5 border-r-4 border-clay pr-3 text-right">
                       {teamB.map((n) => (
-                        <p key={n} className="truncate text-base font-bold">
+                        <p
+                          key={n}
+                          onClick={() => onSelectPlayer && onSelectPlayer(n)}
+                          className={`truncate text-base font-bold text-chalk ${
+                            onSelectPlayer ? 'cursor-pointer hover:text-clay transition' : ''
+                          }`}
+                          title="Tap untuk lihat profil"
+                        >
                           {n}
                         </p>
                       ))}
@@ -126,7 +142,7 @@ export const SpectatorView: React.FC<SpectatorViewProps> = ({
             Klasemen muncul setelah pertandingan pertama selesai.
           </div>
         ) : (
-          <StandingsTable standings={standings} />
+          <StandingsTable standings={standings} onSelectPlayer={onSelectPlayer} />
         )}
       </section>
     </div>

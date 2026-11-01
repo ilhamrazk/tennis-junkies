@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Session, GameType } from '../types/tennis';
-import { Lock, RotateCcw, UserPlus, AlertCircle, Users, User, Play } from 'lucide-react';
+import { Session, GameType, MatchmakingMode } from '../types/tennis';
+import { Lock, RotateCcw, UserPlus, AlertCircle, Users, User, Play, Sparkles, Scale, QrCode, Copy, Check, KeyRound } from 'lucide-react';
 import { LiveDot } from './ui';
 
 interface SessionSetupProps {
@@ -10,6 +10,7 @@ interface SessionSetupProps {
   onSubstitutePlayer: (oldName: string, newName: string) => void;
   onResetSession: () => void;
   onCloseSetup?: () => void;
+  onOpenRsvpView?: () => void;
 }
 
 const EVENTS = [
@@ -21,13 +22,13 @@ const EVENTS = [
 
 const HOSTS = ['Admin', 'Alfonso', 'Yessy', 'Jazzy', 'Fitha', 'Ezra'];
 
-const Step: React.FC<{ n: number; title: string; hint?: string; right?: React.ReactNode; children: React.ReactNode }> = ({
-  n,
-  title,
-  hint,
-  right,
-  children,
-}) => (
+const Step: React.FC<{
+  n: number;
+  title: string;
+  hint?: string;
+  right?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ n, title, hint, right, children }) => (
   <section className="space-y-3">
     <div className="flex items-end justify-between gap-3">
       <div className="flex items-center gap-3">
@@ -59,19 +60,19 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
   onSubstitutePlayer,
   onResetSession,
   onCloseSetup,
+  onOpenRsvpView,
 }) => {
   const isLocked = session.status !== 'draft';
   const [playerInput, setPlayerInput] = useState(session.players.join('\n'));
   const [showSubstitute, setShowSubstitute] = useState(false);
   const [subOldName, setSubOldName] = useState(session.players[0] || '');
   const [subNewName, setSubNewName] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
 
-  // Only sync when session is completely reset externally or session ID changes
+  // Sync playerInput whenever session.players changes externally (e.g. from RSVP check-ins)
   React.useEffect(() => {
-    if (session.players.length === 0) {
-      setPlayerInput('');
-    }
-  }, [session.id, session.players.length === 0]);
+    setPlayerInput(session.players.join('\n'));
+  }, [session.players]);
 
   const parsedPlayers = playerInput
     .split('\n')
@@ -90,6 +91,14 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     onUpdateSession({ players: updatedList });
+  };
+
+  const handleCopyRsvpLink = () => {
+    const rsvpUrl = `${window.location.origin}${window.location.pathname}?mode=rsvp&session=${session.id}`;
+    navigator.clipboard.writeText(rsvpUrl).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    });
   };
 
   const handleLockClick = () => {
@@ -137,7 +146,7 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
     <div className="mx-auto max-w-xl space-y-6">
       <div className="px-1">
         <p className="eyebrow mb-1">{isLocked ? 'Sesi terkunci' : 'Sesi baru'}</p>
-        <h2 className="font-display text-4xl font-extrabold leading-none tracking-tight">Setup</h2>
+        <h2 className="font-display text-4xl font-extrabold leading-none tracking-tight">Setup Sesi</h2>
       </div>
 
       {isLocked && (
@@ -211,6 +220,54 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
         </div>
       )}
 
+      {/* RSVP Self-Registration Banner */}
+      {!isLocked && (
+        <div className="card space-y-3.5 border-ball/30 bg-white/[0.03] p-4 sm:p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ball text-ink-950 font-black text-xs">
+                RSVP
+              </span>
+              <div>
+                <h4 className="font-display text-sm font-bold text-chalk">Pendaftaran Mandiri Pemain</h4>
+                <p className="text-[11px] text-chalk/50">Bagikan link ini agar peserta bisa check-in sendiri</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleCopyRsvpLink}
+              className="btn-ghost flex-1 !py-2.5 !text-xs"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="h-4 w-4 text-ball" />
+                  <span className="text-ball">Link Tersalin!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  <span>Salin Link Check-In</span>
+                </>
+              )}
+            </button>
+
+            {onOpenRsvpView && (
+              <button
+                type="button"
+                onClick={onOpenRsvpView}
+                className="btn-ghost !py-2.5 !text-xs"
+                title="Buka form RSVP sekarang"
+              >
+                <span>Buka Form RSVP &rarr;</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="card space-y-8 p-5 sm:p-7">
         <Step n={1} title="Pilih event">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -245,7 +302,8 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
           </div>
         </Step>
 
-        <Step n={3} title="Format permainan">
+        <Step n={3} title="Format &amp; Mode Matchmaking">
+          {/* Double vs Single */}
           <div className="grid grid-cols-2 gap-2">
             {(['Double', 'Single'] as GameType[]).map((type) => (
               <button
@@ -256,10 +314,12 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
                 className={`${choice(session.gameType === type)} flex items-center justify-center gap-2`}
               >
                 {type === 'Double' ? <Users className="h-4 w-4" /> : <User className="h-4 w-4" />}
-                <span>{type === 'Double' ? 'Ganda' : 'Tunggal'}</span>
+                <span>{type === 'Double' ? 'Ganda (Double)' : 'Tunggal (Single)'}</span>
               </button>
             ))}
           </div>
+
+          {/* Court Count */}
           <div>
             <p className="eyebrow mb-2 !text-[10px]">Jumlah court</p>
             <div className="grid grid-cols-4 gap-2">
@@ -276,12 +336,66 @@ export const SessionSetup: React.FC<SessionSetupProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Smart Balanced Matchmaking Toggle */}
+          <div className="pt-2">
+            <p className="eyebrow mb-2 flex items-center gap-1.5 !text-[10px] !text-ball">
+              <Scale className="h-3.5 w-3.5" />
+              <span>Sistem Rotasi Matchmaking</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={isLocked}
+                onClick={() => onUpdateSession({ matchmakingMode: 'fair' })}
+                className={`${choice((session.matchmakingMode || 'fair') === 'fair')} text-left !p-3`}
+              >
+                <span className="block font-display text-sm font-bold">Acak &amp; Adil</span>
+                <span className="block text-[11px] opacity-60">Rotasi merata &amp; variasi partner baru</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isLocked}
+                onClick={() => onUpdateSession({ matchmakingMode: 'balanced' })}
+                className={`${choice(session.matchmakingMode === 'balanced')} text-left !p-3`}
+              >
+                <div className="flex items-center gap-1">
+                  <span className="block font-display text-sm font-bold">Skill-Balanced</span>
+                  <Sparkles className="h-3.5 w-3.5 text-ball" />
+                </div>
+                <span className="block text-[11px] opacity-60">Pasangkan kuat &amp; berkembang agar seimbang</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Host PIN Security Setting */}
+          <div className="pt-2">
+            <p className="eyebrow mb-2 flex items-center gap-1.5 !text-[10px]">
+              <KeyRound className="h-3.5 w-3.5 text-ball" />
+              <span>PIN Keamanan Host (4 Digit)</span>
+            </p>
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                maxLength={4}
+                disabled={isLocked}
+                value={session.hostPin || '1234'}
+                onChange={(e) => onUpdateSession({ hostPin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                className="field !w-32 text-center tracking-widest font-display text-lg font-black"
+                placeholder="1234"
+              />
+              <span className="text-xs text-chalk/45 leading-tight">
+                Mencegah penonton mengedit skor atau mereset turnamen. (Default: 1234)
+              </span>
+            </div>
+          </div>
         </Step>
 
         <Step
           n={4}
           title="Daftar pemain"
-          hint="Satu nama per baris"
+          hint="Satu nama per baris (atau daftar mandiri via link RSVP di atas)"
           right={
             <div className="flex items-center gap-3">
               {!isLocked && parsedPlayers.length > 0 && (

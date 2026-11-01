@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Match, GameType } from '../types/tennis';
-import { ArrowUpDown, Check, ChevronDown, Minus, Plus, Settings2 } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, Minus, Plus, Settings2, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Avatar, EmptyState, LiveDot, Tone } from './ui';
 import { BallMark } from './ui';
@@ -10,9 +10,12 @@ interface ActiveMatchesProps {
   activeMatches: Match[];
   allPlayers: string[];
   gameType: GameType;
+  isHostUnlocked: boolean;
+  onRequestUnlockHost: () => void;
   onSubmitScore: (matchId: string, scoreA: number, scoreB: number) => void;
   onUpdateLineup: (matchId: string, pA1: string, pA2: string, pB1: string, pB2: string) => void;
   onOpenSetup: () => void;
+  onSelectPlayer: (name: string) => void;
   isSessionActive: boolean;
 }
 
@@ -23,26 +26,40 @@ const PlayerPick: React.FC<{
   players: string[];
   allowEmpty?: boolean;
   onChange: (v: string) => void;
-}> = ({ value, tone, players, allowEmpty, onChange }) => (
-  <div className="relative flex min-w-0 items-center gap-2.5 rounded-xl py-1 pr-2 transition hover:bg-white/[0.04]">
-    <Avatar name={value} tone={tone} size="sm" />
-    <span className={`truncate text-[15px] font-bold ${value ? 'text-chalk' : 'text-chalk/35'}`}>
-      {value || 'Pilih pemain'}
-    </span>
-    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-chalk/30" />
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      aria-label="Ganti pemain"
-      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+  onSelectPlayer?: (name: string) => void;
+}> = ({ value, tone, players, allowEmpty, onChange, onSelectPlayer }) => (
+  <div className="relative flex min-w-0 items-center justify-between rounded-xl py-1 pr-2 transition hover:bg-white/[0.04]">
+    <div
+      onClick={(e) => {
+        if (value && onSelectPlayer) {
+          e.stopPropagation();
+          onSelectPlayer(value);
+        }
+      }}
+      className="flex min-w-0 items-center gap-2.5 cursor-pointer group"
+      title="Tap nama untuk lihat profil pemain"
     >
-      {allowEmpty && <option value="">- Kosong -</option>}
-      {players.map((p) => (
-        <option key={p} value={p}>
-          {p}
-        </option>
-      ))}
-    </select>
+      <Avatar name={value} tone={tone} size="sm" />
+      <span className={`truncate text-[15px] font-bold group-hover:text-ball transition ${value ? 'text-chalk' : 'text-chalk/35'}`}>
+        {value || 'Pilih pemain'}
+      </span>
+    </div>
+    <div className="relative shrink-0 flex items-center">
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-chalk/30" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Ganti pemain"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      >
+        {allowEmpty && <option value="">- Kosong -</option>}
+        {players.map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </select>
+    </div>
   </div>
 );
 
@@ -109,9 +126,12 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
   activeMatches,
   allPlayers,
   gameType,
+  isHostUnlocked,
+  onRequestUnlockHost,
   onSubmitScore,
   onUpdateLineup,
   onOpenSetup,
+  onSelectPlayer,
   isSessionActive,
 }) => {
   const [scores, setScores] = useState<Record<string, { a: number; b: number }>>({});
@@ -129,10 +149,19 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
   };
 
   const handleSwapTeams = (m: Match) => {
+    if (!isHostUnlocked) {
+      onRequestUnlockHost();
+      return;
+    }
     onUpdateLineup(m.id, m.teamB1, m.teamB2, m.teamA1, m.teamA2);
   };
 
   const handleSubmit = (match: Match) => {
+    if (!isHostUnlocked) {
+      onRequestUnlockHost();
+      return;
+    }
+
     const sc = getScore(match.id);
 
     if (sc.a === 0 && sc.b === 0) {
@@ -232,7 +261,14 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
                   value={m.teamA1}
                   tone="ball"
                   players={allPlayers}
-                  onChange={(v) => onUpdateLineup(m.id, v, m.teamA2, m.teamB1, m.teamB2)}
+                  onSelectPlayer={onSelectPlayer}
+                  onChange={(v) => {
+                    if (!isHostUnlocked) {
+                      onRequestUnlockHost();
+                      return;
+                    }
+                    onUpdateLineup(m.id, v, m.teamA2, m.teamB1, m.teamB2);
+                  }}
                 />
                 {isDouble && (
                   <PlayerPick
@@ -240,7 +276,14 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
                     tone="ball"
                     players={allPlayers}
                     allowEmpty
-                    onChange={(v) => onUpdateLineup(m.id, m.teamA1, v, m.teamB1, m.teamB2)}
+                    onSelectPlayer={onSelectPlayer}
+                    onChange={(v) => {
+                      if (!isHostUnlocked) {
+                        onRequestUnlockHost();
+                        return;
+                      }
+                      onUpdateLineup(m.id, m.teamA1, v, m.teamB1, m.teamB2);
+                    }}
                   />
                 )}
               </TeamRow>
@@ -256,7 +299,14 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
                   value={m.teamB1}
                   tone="clay"
                   players={allPlayers}
-                  onChange={(v) => onUpdateLineup(m.id, m.teamA1, m.teamA2, v, m.teamB2)}
+                  onSelectPlayer={onSelectPlayer}
+                  onChange={(v) => {
+                    if (!isHostUnlocked) {
+                      onRequestUnlockHost();
+                      return;
+                    }
+                    onUpdateLineup(m.id, m.teamA1, m.teamA2, v, m.teamB2);
+                  }}
                 />
                 {isDouble && (
                   <PlayerPick
@@ -264,14 +314,30 @@ export const ActiveMatches: React.FC<ActiveMatchesProps> = ({
                     tone="clay"
                     players={allPlayers}
                     allowEmpty
-                    onChange={(v) => onUpdateLineup(m.id, m.teamA1, m.teamA2, m.teamB1, v)}
+                    onSelectPlayer={onSelectPlayer}
+                    onChange={(v) => {
+                      if (!isHostUnlocked) {
+                        onRequestUnlockHost();
+                        return;
+                      }
+                      onUpdateLineup(m.id, m.teamA1, m.teamA2, m.teamB1, v);
+                    }}
                   />
                 )}
               </TeamRow>
 
               <button onClick={() => handleSubmit(m)} className="btn-primary w-full !py-4">
-                <Check className="h-5 w-5" strokeWidth={3} />
-                <span>Selesai &middot; Simpan skor {sc.a} - {sc.b}</span>
+                {!isHostUnlocked ? (
+                  <>
+                    <Lock className="h-5 w-5" />
+                    <span>Buka PIN Host untuk Simpan Skor</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-5 w-5" strokeWidth={3} />
+                    <span>Selesai &middot; Simpan skor {sc.a} - {sc.b}</span>
+                  </>
+                )}
               </button>
             </article>
           );

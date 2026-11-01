@@ -1,5 +1,5 @@
 import React from 'react';
-import { QrCode, Share2, Eye, ShieldCheck, Cloud, CloudOff } from 'lucide-react';
+import { QrCode, Share2, Eye, ShieldCheck, ShieldAlert, Cloud, CloudOff, FolderArchive } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { BallMark } from './ui';
 
@@ -7,9 +7,12 @@ interface HeaderProps {
   eventTitle: string;
   hostName: string;
   isSpectator: boolean;
+  isHostUnlocked: boolean;
   onToggleSpectator: () => void;
   onOpenQr: () => void;
   onOpenShare: () => void;
+  onOpenArchive: () => void;
+  onRequestUnlockHost: () => void;
   hasStandings: boolean;
   isSessionActive: boolean;
 }
@@ -21,9 +24,12 @@ export const Header: React.FC<HeaderProps> = ({
   eventTitle,
   hostName,
   isSpectator,
+  isHostUnlocked,
   onToggleSpectator,
   onOpenQr,
   onOpenShare,
+  onOpenArchive,
+  onRequestUnlockHost,
   hasStandings,
   isSessionActive,
 }) => {
@@ -48,6 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        {/* Cloud Status */}
         <div
           className="hidden h-11 items-center gap-2 rounded-2xl px-3 text-xs font-bold text-chalk/60 md:flex"
           title={isSupabaseConfigured ? 'Tersinkron ke cloud' : 'Tersimpan di perangkat ini'}
@@ -60,6 +67,16 @@ export const Header: React.FC<HeaderProps> = ({
           <span>{isSupabaseConfigured ? 'Cloud live' : 'Lokal'}</span>
         </div>
 
+        {/* Arsip Sesi Button */}
+        <button
+          onClick={onOpenArchive}
+          className={iconBtn}
+          title="Buka Arsip Sesi Komunitas"
+          aria-label="Arsip Sesi"
+        >
+          <FolderArchive className="h-[18px] w-[18px]" />
+        </button>
+
         {!isSpectator && (
           <button onClick={onOpenQr} className={iconBtn} title="QR code untuk penonton" aria-label="QR Lapangan">
             <QrCode className="h-[18px] w-[18px]" />
@@ -69,6 +86,31 @@ export const Header: React.FC<HeaderProps> = ({
         {hasStandings && !isSpectator && (
           <button onClick={onOpenShare} className={iconBtn} title="Poster klasemen" aria-label="Poster">
             <Share2 className="h-[18px] w-[18px]" />
+          </button>
+        )}
+
+        {/* Host PIN Security Badge Button (when not spectator) */}
+        {!isSpectator && (
+          <button
+            onClick={onRequestUnlockHost}
+            className={`flex h-11 items-center gap-1.5 rounded-2xl border px-3 text-xs font-extrabold transition active:scale-95 ${
+              isHostUnlocked
+                ? 'border-ball/30 bg-ball-soft text-ball'
+                : 'border-clay/30 bg-clay-soft text-clay'
+            }`}
+            title={isHostUnlocked ? 'Host terverifikasi PIN' : 'Klik untuk buka kunci Host PIN'}
+          >
+            {isHostUnlocked ? (
+              <>
+                <ShieldCheck className="h-4 w-4" />
+                <span className="hidden sm:inline">Host PIN OK</span>
+              </>
+            ) : (
+              <>
+                <ShieldAlert className="h-4 w-4" />
+                <span className="hidden sm:inline">Kunci Host</span>
+              </>
+            )}
           </button>
         )}
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Session, Match, GameType } from '../types/tennis';
-import { generateMatchesForRound, calculateStandings } from '../lib/rotation';
+import { Session, Match, GameType, ArchivedSession, MatchmakingMode, PlayerCareerStats } from '../types/tennis';
+import { generateMatchesForRound, calculateStandings, calculateAllTimeStats } from '../lib/rotation';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const STORAGE_KEY = 'tennis_junkies_session_clean';
@@ -21,11 +21,14 @@ export function useTennisSession() {
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        // If it still contains dummy data, discard
         if (parsed.players?.includes('Budi Santoso')) {
           localStorage.removeItem(STORAGE_KEY);
         } else {
-          return parsed;
+          return {
+            matchmakingMode: 'fair',
+            hostPin: '1234',
+            ...parsed,
+          };
         }
       } catch (e) {
         console.error(e);
@@ -41,10 +44,12 @@ export function useTennisSession() {
       status: 'draft',
       players: [],
       createdAt: new Date().toISOString(),
+      matchmakingMode: 'fair',
+      hostPin: '1234',
     };
   });
 
-  // Matches State
+  // Matches State for Current Session
   const [matches, setMatches] = useState<Match[]>(() => {
     const cached = localStorage.getItem(MATCHES_STORAGE_KEY);
     if (cached) {
@@ -57,7 +62,41 @@ export function useTennisSession() {
     return [];
   });
 
+  // All-time Matches across all sessions (for career stats)
+  const [allTimeMatches, setAllTimeMatches] = useState<Match[]>([]);
+  // Archive of past sessions
+  const [archivedSessions, setArchivedSessions] = useState<ArchivedSession[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+
+  // Host PIN authorization state
+  const [isHostUnlocked, setIsHostUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(`host_unlocked_${session.id}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const unlockHost = useCallback((pin: string): boolean => {
+    const targetPin = session.hostPin || '1234';
+    if (pin === targetPin) {
+      setIsHostUnlocked(true);
+      try {
+        sessionStorage.setItem(`host_unlocked_${session.id}`, 'true');
+      } catch {}
+      return true;
+    }
+    return false;
+  }, [session.id, session.hostPin]);
+
+  const lockHost = useCallback(() => {
+    setIsHostUnlocked(false);
+    try {
+      sessionStorage.removeItem(`host_unlocked_${session.id}`);
+    } catch {}
+  }, [session.id]);
 
   // Save to LocalStorage whenever session or matches change
   useEffect(() => {
@@ -96,16 +135,39 @@ export function useTennisSession() {
         }
 
         const latest = sessions[0];
+        await loadSessionMatches(latest);
+      } catch (err) {
+        console.warn('Failed to load latest session from cloud:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-        // Fetch matches for this session
-        const { data: remoteMatches, error: mErr } = await client
-          .from('matches')
-          .select('*')
-          .eq('session_id', latest.id)
-          .order('round', { ascending: true })
-          .order('court', { ascending: true });
+    loadLatestFromCloud();
+    loadAllCloudData();
+  }, []);
 
-        const mappedMatches: Match[] = (remoteMatches || []).map((d: any) => ({
+  // Helper to load matches and populate state for a given session
+  const loadSessionMatches = async (remoteSession: any) => {
+    const client = supabase;
+    if (!client) return;
+
+    const { data: remoteMatches } = await client
+      .from('matches')
+      .select('*')
+      .eq('session_id', remoteSession.id)
+      .order('round', { ascending: true })
+      .order('court', { ascending: true });
+
+    const regularMatches: Match[] = [];
+    const playerSet = new Set<string>();
+
+    (remoteMatches || []).forEach((d: any) => {
+      // Check if this row is an RSVP check-in row (round === 0)
+      if (d.round === 0 && d.team_b1 === '__RSVP__') {
+        if (d.team_a1) playerSet.add(d.team_a1);
+      } else {
+        regularMatches.push({
           id: d.id,
           sessionId: d.session_id,
           round: d.round,
@@ -119,45 +181,161 @@ export function useTennisSession() {
           isCompleted: d.status === 'completed',
           createdAt: d.created_at,
           updatedAt: d.updated_at,
+        });
+
+        [d.team_a1, d.team_a2, d.team_b1, d.team_b2].filter(Boolean).forEach((p) => playerSet.add(p));
+      }
+    });
+
+    const restoredPlayers = Array.from(playerSet);
+
+    setSession((prev) => ({
+      ...prev,
+      id: remoteSession.id,
+      eventTitle: remoteSession.event_title,
+      hostName: remoteSession.host_name,
+      gameType: remoteSession.game_type,
+      courtCount: remoteSession.court_count,
+      currentRound: remoteSession.current_round,
+      status: remoteSession.status,
+      players: restoredPlayers.length > 0 ? restoredPlayers : prev.players,
+      createdAt: remoteSession.created_at,
+    }));
+
+    setMatches(regularMatches);
+  };
+
+  // Load all matches and sessions to build All-Time Leaderboard and Archive
+  const loadAllCloudData = async () => {
+    const client = supabase;
+    if (!client) return;
+    setIsArchiveLoading(true);
+
+    try {
+      // 1. Fetch all completed matches
+      const { data: allM } = await client
+        .from('matches')
+        .select('*')
+        .eq('status', 'completed')
+        .gt('round', 0);
+
+      if (allM) {
+        const mappedAll: Match[] = allM.map((d: any) => ({
+          id: d.id,
+          sessionId: d.session_id,
+          round: d.round,
+          court: d.court,
+          teamA1: d.team_a1,
+          teamA2: d.team_a2 || '',
+          teamB1: d.team_b1,
+          teamB2: d.team_b2 || '',
+          scoreA: d.score_a,
+          scoreB: d.score_b,
+          isCompleted: true,
+          createdAt: d.created_at,
+          updatedAt: d.updated_at,
         }));
+        setAllTimeMatches(mappedAll);
+      }
 
-        // Extract player names
-        const playerSet = new Set<string>();
-        mappedMatches.forEach((m) => {
-          [m.teamA1, m.teamA2, m.teamB1, m.teamB2].filter(Boolean).forEach((p) => playerSet.add(p));
+      // 2. Fetch all sessions
+      const { data: allS } = await client
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (allS) {
+        const matchesBySession: Record<string, Match[]> = {};
+        if (allM) {
+          allM.forEach((d: any) => {
+            if (!matchesBySession[d.session_id]) matchesBySession[d.session_id] = [];
+            matchesBySession[d.session_id].push({
+              id: d.id,
+              sessionId: d.session_id,
+              round: d.round,
+              court: d.court,
+              teamA1: d.team_a1,
+              teamA2: d.team_a2 || '',
+              teamB1: d.team_b1,
+              teamB2: d.team_b2 || '',
+              scoreA: d.score_a,
+              scoreB: d.score_b,
+              isCompleted: d.status === 'completed',
+              createdAt: d.created_at,
+            });
+          });
+        }
+
+        const archives: ArchivedSession[] = allS.map((s: any) => {
+          const sessMatches = matchesBySession[s.id] || [];
+          const players = new Set<string>();
+          sessMatches.forEach((m) => {
+            [m.teamA1, m.teamA2, m.teamB1, m.teamB2].filter(Boolean).forEach((p) => players.add(p));
+          });
+          const sessionStandings = calculateStandings(Array.from(players), sessMatches);
+          const podium = sessionStandings.slice(0, 3).map((st) => ({
+            place: st.rank,
+            name: st.name,
+            points: st.points,
+          }));
+
+          return {
+            id: s.id,
+            eventTitle: s.event_title,
+            hostName: s.host_name,
+            gameType: s.game_type,
+            courtCount: s.court_count,
+            currentRound: s.current_round,
+            status: s.status,
+            createdAt: s.created_at,
+            matchCount: sessMatches.length,
+            podium,
+          };
         });
 
-        const restoredPlayers = Array.from(playerSet);
+        setArchivedSessions(archives);
+      }
+    } catch (e) {
+      console.warn('Load cloud archives warning:', e);
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
 
-        setSession({
-          id: latest.id,
-          eventTitle: latest.event_title,
-          hostName: latest.host_name,
-          gameType: latest.game_type,
-          courtCount: latest.court_count,
-          currentRound: latest.current_round,
-          status: latest.status,
-          players: restoredPlayers,
-          createdAt: latest.created_at,
-        });
+  // Switch to an archived session
+  const switchSession = useCallback(
+    async (sessionId: string) => {
+      const client = supabase;
+      if (!client) return;
+      setIsLoading(true);
+      try {
+        const { data: sData } = await client
+          .from('sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .single();
 
-        setMatches(mappedMatches);
-      } catch (err) {
-        console.warn('Failed to load latest session from cloud:', err);
+        if (sData) {
+          await loadSessionMatches(sData);
+          // Update URL query param cleanly
+          const url = new URL(window.location.href);
+          url.searchParams.set('session', sessionId);
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch (e) {
+        console.error('Failed to switch session:', e);
       } finally {
         setIsLoading(false);
       }
-    };
-
-    loadLatestFromCloud();
-  }, []);
+    },
+    []
+  );
 
   // 2. Supabase Realtime Listener (for live websocket updates)
   useEffect(() => {
     const client = supabase;
     if (!isSupabaseConfigured || !client || !session.id) return;
 
-    // Listen for remote matches updates
     const channel = client
       .channel(`session-${session.id}`)
       .on(
@@ -198,25 +376,31 @@ export function useTennisSession() {
       .order('court', { ascending: true });
 
     if (data && data.length > 0) {
-      const mapped: Match[] = data.map((d: any) => ({
-        id: d.id,
-        sessionId: d.session_id,
-        round: d.round,
-        court: d.court,
-        teamA1: d.team_a1,
-        teamA2: d.team_a2 || '',
-        teamB1: d.team_b1,
-        teamB2: d.team_b2 || '',
-        scoreA: d.score_a,
-        scoreB: d.score_b,
-        isCompleted: d.status === 'completed',
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-      }));
-
+      const regularMatches: Match[] = [];
       const playerSet = new Set<string>();
-      mapped.forEach((m) => {
-        [m.teamA1, m.teamA2, m.teamB1, m.teamB2].filter(Boolean).forEach((p) => playerSet.add(p));
+
+      data.forEach((d: any) => {
+        if (d.round === 0 && d.team_b1 === '__RSVP__') {
+          if (d.team_a1) playerSet.add(d.team_a1);
+        } else {
+          regularMatches.push({
+            id: d.id,
+            sessionId: d.session_id,
+            round: d.round,
+            court: d.court,
+            teamA1: d.team_a1,
+            teamA2: d.team_a2 || '',
+            teamB1: d.team_b1,
+            teamB2: d.team_b2 || '',
+            scoreA: d.score_a,
+            scoreB: d.score_b,
+            isCompleted: d.status === 'completed',
+            createdAt: d.created_at,
+            updatedAt: d.updated_at,
+          });
+
+          [d.team_a1, d.team_a2, d.team_b1, d.team_b2].filter(Boolean).forEach((p) => playerSet.add(p));
+        }
       });
 
       if (playerSet.size > 0) {
@@ -226,7 +410,7 @@ export function useTennisSession() {
         }));
       }
 
-      setMatches(mapped);
+      setMatches(regularMatches);
     }
   };
 
@@ -273,6 +457,65 @@ export function useTennisSession() {
     }
   };
 
+  // Register a player via RSVP (Self Check-in)
+  const registerRsvp = useCallback(
+    async (playerName: string): Promise<boolean> => {
+      const trimmed = playerName.trim();
+      if (!trimmed) return false;
+
+      // Update local session players
+      setSession((s) => {
+        if (s.players.includes(trimmed)) return s;
+        return {
+          ...s,
+          players: [...s.players, trimmed],
+        };
+      });
+
+      // Sync session to cloud
+      syncSessionToCloud(session);
+
+      // Record in matches table as round 0 (RSVP record) for cloud persistence and realtime sync
+      const client = supabase;
+      if (client) {
+        try {
+          const rsvpId = `rsvp-${session.id}-${Date.now()}`;
+          await client.from('matches').insert({
+            id: rsvpId,
+            session_id: session.id,
+            round: 0,
+            court: 0,
+            team_a1: trimmed,
+            team_a2: '',
+            team_b1: '__RSVP__',
+            team_b2: '',
+            status: 'pending',
+          });
+        } catch (e) {
+          console.warn('RSVP cloud write notice:', e);
+        }
+      }
+
+      return true;
+    },
+    [session]
+  );
+
+  // Compute player skill ratings for Smart Balanced matchmaking
+  const playerRatings = useMemo(() => {
+    const ratings: Record<string, number> = {};
+    const sessionStandings = calculateStandings(session.players, matches);
+    sessionStandings.forEach((s) => {
+      ratings[s.name] = (s.points * 5) + (s.won * 20);
+    });
+    // Add all-time ratings if available
+    const career = calculateAllTimeStats(allTimeMatches);
+    career.forEach((c) => {
+      ratings[c.name] = (ratings[c.name] ?? 50) + c.winRate;
+    });
+    return ratings;
+  }, [session.players, matches, allTimeMatches]);
+
   // 1. Lock and start session
   const lockSession = useCallback(() => {
     if (session.players.length === 0) return false;
@@ -283,7 +526,9 @@ export function useTennisSession() {
       session.players,
       session.gameType,
       session.courtCount,
-      []
+      [],
+      session.matchmakingMode || 'fair',
+      playerRatings
     );
 
     const updatedSession: Session = {
@@ -301,7 +546,7 @@ export function useTennisSession() {
     });
 
     return true;
-  }, [session]);
+  }, [session, playerRatings]);
 
   // 2. Submit Score for a court match
   const submitScore = useCallback(
@@ -317,6 +562,11 @@ export function useTennisSession() {
               updatedAt: new Date().toISOString(),
             };
             syncMatchToCloud(updated);
+            // Also append to allTimeMatches for immediate career stats recalculation
+            setAllTimeMatches((prevAll) => {
+              const filtered = prevAll.filter((a) => a.id !== updated.id);
+              return [...filtered, updated];
+            });
             return updated;
           }
           return m;
@@ -335,7 +585,9 @@ export function useTennisSession() {
             session.players,
             session.gameType,
             session.courtCount,
-            next
+            next,
+            session.matchmakingMode || 'fair',
+            playerRatings
           );
 
           if (nextRoundMatches.length > 0) {
@@ -352,7 +604,7 @@ export function useTennisSession() {
         return next;
       });
     },
-    [session]
+    [session, playerRatings]
   );
 
   // 3. Live swap players inside an active match
@@ -386,13 +638,11 @@ export function useTennisSession() {
 
       const trimmedNew = newName.trim();
 
-      // Update session players
       setSession((s) => ({
         ...s,
         players: s.players.map((p) => (p === oldName ? trimmedNew : p)),
       }));
 
-      // Update in active/pending matches
       setMatches((prev) =>
         prev.map((m) => {
           let changed = false;
@@ -423,7 +673,7 @@ export function useTennisSession() {
     []
   );
 
-  // 5. Edit completed match (for corrections)
+  // 5. Edit completed match
   const editCompletedMatch = useCallback(
     (
       matchId: string,
@@ -474,6 +724,8 @@ export function useTennisSession() {
       status: 'draft',
       players: [],
       createdAt: new Date().toISOString(),
+      matchmakingMode: 'fair',
+      hostPin: '1234',
     });
     setMatches([]);
   }, []);
@@ -493,6 +745,18 @@ export function useTennisSession() {
     return calculateStandings(session.players, matches);
   }, [session.players, matches]);
 
+  // Combined all completed matches (current session + cloud history)
+  const combinedAllMatches = useMemo(() => {
+    const idMap = new Map<string, Match>();
+    allTimeMatches.forEach((m) => idMap.set(m.id, m));
+    matches.filter((m) => m.isCompleted).forEach((m) => idMap.set(m.id, m));
+    return Array.from(idMap.values());
+  }, [allTimeMatches, matches]);
+
+  const allTimeStats = useMemo(() => {
+    return calculateAllTimeStats(combinedAllMatches);
+  }, [combinedAllMatches]);
+
   return {
     session,
     setSession,
@@ -500,7 +764,16 @@ export function useTennisSession() {
     activeMatches,
     historyMatches,
     standings,
+    allTimeStats,
+    archivedSessions,
+    isArchiveLoading,
+    refreshArchive: loadAllCloudData,
+    switchSession,
+    registerRsvp,
     isLoading,
+    isHostUnlocked,
+    unlockHost,
+    lockHost,
     lockSession,
     submitScore,
     updateMatchLineup,

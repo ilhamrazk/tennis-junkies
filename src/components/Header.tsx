@@ -1,6 +1,7 @@
 import React from 'react';
-import { QrCode, Share2, Eye, ShieldCheck, Wifi, Settings2 } from 'lucide-react';
+import { QrCode, Share2, Eye, ShieldCheck, Cloud, CloudOff } from 'lucide-react';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { BallMark } from './ui';
 
 interface HeaderProps {
   eventTitle: string;
@@ -9,10 +10,12 @@ interface HeaderProps {
   onToggleSpectator: () => void;
   onOpenQr: () => void;
   onOpenShare: () => void;
-  onOpenSetup: () => void;
   hasStandings: boolean;
   isSessionActive: boolean;
 }
+
+const iconBtn =
+  'flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 text-chalk/80 transition hover:bg-white/10 hover:text-chalk active:scale-95';
 
 export const Header: React.FC<HeaderProps> = ({
   eventTitle,
@@ -21,115 +24,75 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSpectator,
   onOpenQr,
   onOpenShare,
-  onOpenSetup,
   hasStandings,
   isSessionActive,
 }) => {
   return (
-    <header className="bg-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl mb-6 border border-slate-800">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        {/* Brand Logo & Event Tag */}
-        <div className="flex items-center gap-3.5">
-          <div className="relative flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-orange to-orange-500 shadow-brand shrink-0">
-            <span className="text-2xl select-none">🎾</span>
-            <span className="absolute -bottom-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-400"></span>
-            </span>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black tracking-wider text-white">
-                THE JUNKIES <span className="text-brand-orange">CO.</span>
-              </h1>
-              <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/10 text-slate-300">
-                PRO ENGINE
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 font-bold tracking-wide flex items-center gap-1.5 mt-0.5">
-              <span>{eventTitle}</span>
-              {hostName && (
-                <>
-                  <span className="text-white/20">•</span>
-                  <span className="text-white">Host: {hostName}</span>
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Controls & Badges */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Cloud Status Pill */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-              isSupabaseConfigured
-                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-700/60'
-                : 'bg-white/5 text-slate-300 border-white/10'
-            }`}
-          >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isSupabaseConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
-              }`}
-            />
-            <span>{isSupabaseConfigured ? 'Cloud Live' : 'Local Cache'}</span>
-          </div>
-
-          {/* QR Lapangan Button */}
-          <button
-            onClick={onOpenQr}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-xs font-black border border-slate-700 transition active:scale-95 shadow-sm"
-            title="Scan QR Code untuk penonton & pemain"
-          >
-            <QrCode className="w-4 h-4 text-brand-orange" />
-            <span className="hidden sm:inline">QR Lapangan</span>
-          </button>
-
-          {/* Share Poster Button */}
-          {hasStandings && (
-            <button
-              onClick={onOpenShare}
-              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-md transition active:scale-95"
-              title="Unduh Poster Story Instagram / WA"
-            >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Poster</span>
-            </button>
-          )}
-
-          {/* Setup Sesi Trigger */}
-          <button
-            onClick={onOpenSetup}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition active:scale-95"
-            title="Buka Pengaturan Sesi"
-          >
-            <Settings2 className="w-4 h-4" />
-          </button>
-
-          {/* Spectator / Host View Toggle */}
-          <button
-            onClick={onToggleSpectator}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition active:scale-95 border ${
-              isSpectator
-                ? 'bg-brand-orange text-white border-brand-orange shadow-brand'
-                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border-slate-700'
-            }`}
-          >
-            {isSpectator ? (
+    <header className="mb-6 flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <BallMark className="h-11 w-11 shrink-0 drop-shadow-[0_6px_16px_rgba(216,245,59,0.35)]" />
+        <div className="min-w-0">
+          <h1 className="font-display text-xl font-extrabold leading-none tracking-tight">
+            Junkies<span className="text-ball">.</span>
+          </h1>
+          <p className="mt-1 flex items-center gap-1.5 truncate text-xs font-medium text-chalk/50">
+            <span className="truncate">{isSessionActive ? eventTitle : 'Belum ada sesi'}</span>
+            {hostName && isSessionActive && (
               <>
-                <ShieldCheck className="w-4 h-4" />
-                <span>Host View</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-4 h-4 text-brand-orange" />
-                <span className="hidden sm:inline">Spectator</span>
+                <span className="text-chalk/20">/</span>
+                <span className="shrink-0 text-chalk/80">{hostName}</span>
               </>
             )}
-          </button>
+          </p>
         </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <div
+          className="hidden h-11 items-center gap-2 rounded-2xl px-3 text-xs font-bold text-chalk/60 md:flex"
+          title={isSupabaseConfigured ? 'Tersinkron ke cloud' : 'Tersimpan di perangkat ini'}
+        >
+          {isSupabaseConfigured ? (
+            <Cloud className="h-4 w-4 text-ball" />
+          ) : (
+            <CloudOff className="h-4 w-4" />
+          )}
+          <span>{isSupabaseConfigured ? 'Cloud live' : 'Lokal'}</span>
+        </div>
+
+        {!isSpectator && (
+          <button onClick={onOpenQr} className={iconBtn} title="QR code untuk penonton" aria-label="QR Lapangan">
+            <QrCode className="h-[18px] w-[18px]" />
+          </button>
+        )}
+
+        {hasStandings && !isSpectator && (
+          <button onClick={onOpenShare} className={iconBtn} title="Poster klasemen" aria-label="Poster">
+            <Share2 className="h-[18px] w-[18px]" />
+          </button>
+        )}
+
+        <button
+          onClick={onToggleSpectator}
+          className={
+            isSpectator
+              ? 'flex h-11 items-center gap-2 rounded-2xl bg-ball px-4 text-sm font-extrabold text-ink-950 shadow-ball transition active:scale-95'
+              : iconBtn
+          }
+          title={isSpectator ? 'Kembali ke mode host' : 'Lihat sebagai penonton'}
+        >
+          {isSpectator ? (
+            <>
+              <ShieldCheck className="h-[18px] w-[18px]" />
+              <span>Host</span>
+            </>
+          ) : (
+            <>
+              <Eye className="h-[18px] w-[18px]" />
+              <span className="hidden text-sm font-bold sm:inline">Penonton</span>
+            </>
+          )}
+        </button>
       </div>
     </header>
   );

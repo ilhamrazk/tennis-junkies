@@ -60,8 +60,8 @@ export function App() {
   }, [isSpectator]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 py-4 sm:py-6 px-3 sm:px-6 font-sans selection:bg-brand-orange selection:text-white">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen px-4 pt-5 pb-32 sm:px-6 sm:pt-8 font-sans">
+      <div className="max-w-3xl mx-auto">
         {/* Header Bar */}
         <Header
           eventTitle={session.eventTitle}
@@ -70,7 +70,6 @@ export function App() {
           onToggleSpectator={() => setIsSpectator(!isSpectator)}
           onOpenQr={() => setShowQr(true)}
           onOpenShare={() => setShowShare(true)}
-          onOpenSetup={() => setActiveTab('setup')}
           hasStandings={standings.length > 0}
           isSessionActive={isSessionActive}
         />
@@ -86,7 +85,6 @@ export function App() {
         ) : (
           /* Host / Tournament Manager View */
           <div>
-            {/* Segmented Pill Tabs Navigation */}
             <NavigationTabs
               activeTab={activeTab}
               onSelectTab={setActiveTab}
@@ -97,7 +95,7 @@ export function App() {
             />
 
             {/* Tab Views */}
-            <main className="animate-in fade-in duration-200">
+            <main key={activeTab} className="animate-fade-in">
               {activeTab === 'courts' && (
                 <ActiveMatches
                   currentRound={session.currentRound}
